@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图灵斑图 · 反应扩散动力学</title>
+    <style>
+        :root {
+            --bg: #000000;
+            --panel-bg: rgba(0, 0, 0, 0.7);
+            --border: rgba(80, 80, 80, 0.3);
+            --text: rgba(200, 200, 200, 0.85);
+            --text-secondary: rgba(160, 160, 160, 0.7);
+            --accent: rgba(180, 180, 180, 0.7);
+            --success: rgba(180, 180, 180, 0.7);
+            --danger: rgba(180, 180, 180, 0.7);
+            --slider-track: rgba(80, 80, 80, 0.4);
+            --card-bg: rgba(20, 20, 20, 0.3);
+            --radius: 10px;
+            --radius-sm: 6px;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #000000;
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .main-container {
+            display: flex;
+            gap: 20px;
+            max-width: 1200px;
+            width: 100%;
+            background: var(--panel-bg);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            min-height: 650px;
+        }
+        .display-panel {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000000;
+            border-right: 1px solid var(--border);
+            padding: 20px;
+            min-width: 0;
+        }
+        canvas#displayCanvas {
+            display: block;
+            image-rendering: pixelated;
+            width: 800px;
+            max-width: 100%;
+            border-radius: 6px;
+            box-shadow: 0 0 0 3px var(--border);
+        }
+        .control-panel {
+            flex: 0 0 320px;
+            padding: 24px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            overflow-y: auto;
+        }
+        .panel-title {
+            font-size: 20px;
+            font-weight: 700;
+            opacity: 0.9;
+            color: var(--text);
+        }
+        .param-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .param-group-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            font-weight: 700;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 5px;
+        }
+        .param-row {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .param-label-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            font-size: 13px;
+            opacity: 0.85;
+            color: var(--text);
+        }
+        .param-value {
+            font-weight: 700;
+            color: var(--text);
+            font-family: monospace;
+            background: var(--card-bg);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 8px;
+            background: var(--slider-track);
+            outline: none;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: rgba(200, 200, 200, 0.9);
+            border: 2px solid var(--accent);
+            cursor: pointer;
+        }
+        .preset-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 6px;
+        }
+        .preset-btn {
+            padding: 8px 4px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--card-bg);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .preset-btn.active {
+            border-color: var(--accent);
+            background: rgba(60, 60, 60, 0.5);
+            color: rgba(220, 220, 220, 0.95);
+            box-shadow: 0 0 10px rgba(180, 180, 180, 0.2);
+        }
+        .preset-btn:hover {
+            border-color: rgba(120, 120, 120, 0.5);
+        }
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .action-btn {
+            padding: 10px 8px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--card-bg);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .action-btn:hover {
+            border-color: rgba(120, 120, 120, 0.5);
+        }
+        .action-btn.active {
+            border-color: var(--success);
+            background: rgba(60, 60, 60, 0.5);
+            color: rgba(220, 220, 220, 0.95);
+            box-shadow: 0 0 10px rgba(180, 180, 180, 0.2);
+        }
+        .action-btn.danger:hover {
+            border-color: var(--danger);
+            background: rgba(60, 60, 60, 0.5);
+        }
+        .color-preset-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+        }
+        .color-btn {
+            height: 36px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .color-btn.active {
+            border-color: rgba(200, 200, 200, 0.8);
+            box-shadow: 0 0 8px rgba(200, 200, 200, 0.3);
+        }
+        .color-btn:hover {
+            transform: scale(1.05);
+        }
+        .color-action-buttons {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 4px;
+            margin-top: 6px;
+        }
+        #customColorBtn {
+            position: relative;
+            overflow: hidden;
+        }
+        #customColorInput {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .speed-group {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2px;
+        }
+        .speed-btn {
+            width: 28px;
+            height: 36px;
+            padding: 0;
+            font-size: 10px;
+            line-height: 36px;
+        }
+        @media (max-width: 1200px) {
+            .main-container {
+                flex-direction: column;
+            }
+            .display-panel {
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+            canvas#displayCanvas {
+                width: 100%;
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="display-panel">
+            <canvas id="displayCanvas" width="800" height="800"></canvas>
+        </div>
+        <div class="control-panel">
+            <div class="panel-title">🧬 图灵斑图</div>
+
+            <div class="param-group">
+                <div class="param-group-label">🎨 斑纹颜色</div>
+                <div class="color-preset-grid">
+                    <button class="color-btn" data-color="#ffffff" style="background: #ffffff;"></button>
+                    <button class="color-btn" data-color="#ff4444" style="background: #ff4444;"></button>
+                    <button class="color-btn" data-color="#44ff44" style="background: #44ff44;"></button>
+                    <button class="color-btn" data-color="#4444ff" style="background: #4444ff;"></button>
+                    <button class="color-btn" data-color="#ff44ff" style="background: #ff44ff;"></button>
+                </div>
+                <div class="color-action-buttons">
+                    <button class="action-btn" id="customColorBtn" style="background: #ffffff;">
+                        自定义
+                        <input type="color" id="customColorInput" value="#ffffff">
+                    </button>
+                    <button class="action-btn" id="rgbCycleBtn">RGB变色</button>
+                    <div class="speed-group">
+                        <button class="action-btn speed-btn" id="speedSlowBtn">慢</button>
+                        <button class="action-btn speed-btn active" id="speedMediumBtn">中</button>
+                        <button class="action-btn speed-btn" id="speedFastBtn">快</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="param-group">
+                <div class="param-group-label">🔬 扩散系数</div>
+                <div class="param-row">
+                    <div class="param-label-row"><span>D<sub>u</sub></span><span class="param-value" id="valDu">0.16</span></div>
+                    <input type="range" id="Du" min="0.04" max="0.30" step="0.001" value="0.16">
+                </div>
+                <div class="param-row">
+                    <div class="param-label-row"><span>D<sub>v</sub></span><span class="param-value" id="valDv">0.08</span></div>
+                    <input type="range" id="Dv" min="0.02" max="0.20" step="0.001" value="0.08">
+                </div>
+            </div>
+
+            <div class="param-group">
+                <div class="param-group-label">⚗️ 反应参数</div>
+                <div class="param-row">
+                    <div class="param-label-row"><span>F (供给)</span><span class="param-value" id="valF">0.035</span></div>
+                    <input type="range" id="F" min="0.010" max="0.080" step="0.0005" value="0.035">
+                </div>
+                <div class="param-row">
+                    <div class="param-label-row"><span>k (移除)</span><span class="param-value" id="valK">0.065</span></div>
+                    <input type="range" id="K" min="0.035" max="0.075" step="0.0005" value="0.065">
+                </div>
+            </div>
+
+            <div class="param-group">
+                <div class="param-group-label">📐 预设图案</div>
+                <div class="preset-grid" id="presetGrid">
+                    <button class="preset-btn" data-preset="stripes">〰️ 条纹</button>
+                    <button class="preset-btn" data-preset="spots">🔘 斑点</button>
+                    <button class="preset-btn" data-preset="maze">🌀 迷宫</button>
+                    <button class="preset-btn" data-preset="honeycomb">🏭 化工</button>
+                    <button class="preset-btn" data-preset="concentric">⭕ 同心环</button>
+                    <button class="preset-btn" data-preset="coral">🔄 回环</button>
+                </div>
+            </div>
+
+            <div class="param-group">
+                <div class="param-group-label">🎮 自动控制</div>
+                <div class="action-buttons" style="margin-top: 8px;">
+                    <button class="action-btn" id="randomLoopBtn">🎲 随机循环</button>
+                    <button class="action-btn danger" id="stopLoopBtn">⏹️ 停止循环</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ---------- 核心改动：扩大模拟网格以匹配800x800显示区域 ----------
+            // 原网格 250x250 ，现改为 400x400 ，显示画布 800x800
+            // 每个计算单元格渲染为 2x2 像素块，图像范围扩大 1.6 倍（面积 2.56 倍）
+            const canvas = document.getElementById('displayCanvas');
+            const ctx = canvas.getContext('2d');
+            const GRID_W = 400,
+                GRID_H = 400;
+            const DISPLAY_W = 800,
+                DISPLAY_H = 800;
+            const TOTAL_CELLS = GRID_W * GRID_H;
+
+            let Du = 0.16,
+                Dv = 0.08,
+                F = 0.035,
+                k = 0.065;
+            let u, v;
+
+            // 颜色相关变量
+            let currentColor = { r: 255, g: 255, b: 255 };
+            let isRgbCycling = false;
+            let rgbCycleHue = 0;
+            let RGB_CYCLE_SPEED = 0.15; // 默认中速
+
+            // 随机循环相关
+            let randomLoopTimeout = null;
+            let isRandomLooping = false;
+
+            // 特殊模式定时器
+            let spotTimer = null;
+            let spotStepInterval = null;
+            let concentricTimer = null;
+            let huanInterval = null;
+            let huanAdjustCount = 0;
+
+            // 平滑参数变化系统
+            const PARAM_CHANGE_DURATION = 2000;
+            const MIN_INTERVAL = 500;
+            const MAX_INTERVAL = 5000;
+            const activeAnimations = new Map();
+            let animationFrameId = null;
+
+            // 图案检测相关
+            let stepCounter = 0;
+            const CHECK_INTERVAL = 100;
+
+            // 离屏画布尺寸与网格相同
+            const offCanvas = document.createElement('canvas');
+            offCanvas.width = GRID_W;
+            offCanvas.height = GRID_H;
+            const offCtx = offCanvas.getContext('2d');
+
+            // 二次缓动函数
+            function easeInOutQuad(t) {
+                return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+            }
+
+            // 更新参数动画
+            function updateAnimations(timestamp) {
+                let hasActiveAnimations = false;
+                activeAnimations.forEach((anim, param) => {
+                    const elapsed = timestamp - anim.startTime;
+                    const progress = Math.min(1, elapsed / PARAM_CHANGE_DURATION);
+                    const easedProgress = easeInOutQuad(progress);
+                    const currentValue = anim.startValue + (anim.targetValue - anim.startValue) * easedProgress;
+
+                    switch (param) {
+                        case 'Du':
+                            Du = currentValue;
+                            break;
+                        case 'Dv':
+                            Dv = currentValue;
+                            break;
+                        case 'F':
+                            F = currentValue;
+                            break;
+                        case 'k':
+                            k = currentValue;
+                            break;
+                    }
+                    updateDisplays();
+                    if (progress >= 1) {
+                        activeAnimations.delete(param);
+                    } else {
+                        hasActiveAnimations = true;
+                    }
+                });
+                if (hasActiveAnimations) {
+                    animationFrameId = requestAnimationFrame(updateAnimations);
+                } else {
+                    animationFrameId = null;
+                }
+            }
+
+            function animateParameter(param, targetValue) {
+                if (activeAnimations.has(param)) return false;
+                let startValue;
+                switch (param) {
+                    case 'Du':
+                        startValue = Du;
+                        break;
+                    case 'Dv':
+                        startValue = Dv;
+                        break;
+                    case 'F':
+                        startValue = F;
+                        break;
+                    case 'k':
+                        startValue = k;
+                        break;
+                    default:
+                        return false;
+                }
+                activeAnimations.set(param, {
+                    startValue: startValue,
+                    targetValue: targetValue,
+                    startTime: performance.now()
+                });
+                if (!animationFrameId) {
+                    animationFrameId = requestAnimationFrame(updateAnimations);
+                }
+                return true;
+            }
+
+            function createArrays() {
+                u = new Float32Array(TOTAL_CELLS);
+                v = new Float32Array(TOTAL_CELLS);
+            }
+
+            function initPattern() {
+                u.fill(1.0);
+                v.fill(0.0);
+                const cx = Math.floor(GRID_W / 2);
+                const cy = Math.floor(GRID_H / 2);
+                const rad = Math.floor(GRID_W * 0.3);
+                const radSq = rad * rad;
+                for (let y = 0; y < GRID_H; y++) {
+                    for (let x = 0; x < GRID_W; x++) {
+                        const dx = x - cx,
+                            dy = y - cy;
+                        if (dx * dx + dy * dy < radSq) {
+                            const idx = y * GRID_W + x;
+                            v[idx] = Math.random() * 0.25 + 0.05;
+                            u[idx] = 1.0 - v[idx] * 0.5;
+                        }
+                    }
+                }
+                for (let i = 0; i < TOTAL_CELLS; i++) {
+                    v[i] += (Math.random() - 0.5) * 0.005;
+                    u[i] += (Math.random() - 0.5) * 0.002;
+                    u[i] = Math.max(0, Math.min(1, u[i]));
+                    v[i] = Math.max(0, Math.min(0.6, v[i]));
+                }
+                stepCounter = 0;
+            }
+
+            function laplacian5(arr, idx) {
+                const w = GRID_W,
+                    h = GRID_H;
+                const x = idx % w;
+                const y = Math.floor(idx / w);
+                const up = ((y - 1 + h) % h) * w + x;
+                const down = ((y + 1) % h) * w + x;
+                const left = y * w + ((x - 1 + w) % w);
+                const right = y * w + ((x + 1) % w);
+                return arr[up] + arr[down] + arr[left] + arr[right] - 4 * arr[idx];
+            }
+
+            function isPatternDead() {
+                let lowCount = 0,
+                    highCount = 0;
+                const thresholdLow = 0.01,
+                    thresholdHigh = 0.25;
+                for (let i = 0; i < TOTAL_CELLS; i++) {
+                    if (v[i] < thresholdLow) lowCount++;
+                    else if (v[i] > thresholdHigh) highCount++;
+                }
+                const lowRatio = lowCount / TOTAL_CELLS;
+                const highRatio = highCount / TOTAL_CELLS;
+                return lowRatio > 0.95 || highRatio > 0.95;
+            }
+
+            function step() {
+                const newU = new Float32Array(TOTAL_CELLS);
+                const newV = new Float32Array(TOTAL_CELLS);
+                const dt = 0.8;
+                for (let i = 0; i < TOTAL_CELLS; i++) {
+                    const ui = u[i],
+                        vi = v[i];
+                    const lapU = laplacian5(u, i);
+                    const lapV = laplacian5(v, i);
+                    const uvv = ui * vi * vi;
+                    let nu = ui + dt * (Du * lapU - uvv + F * (1 - ui));
+                    let nv = vi + dt * (Dv * lapV + uvv - (F + k) * vi);
+                    nu = Math.max(0, Math.min(1, nu));
+                    nv = Math.max(0, Math.min(0.6, nv));
+                    newU[i] = nu;
+                    newV[i] = nv;
+                }
+                u = newU;
+                v = newV;
+                stepCounter++;
+                // 仅随机循环模式下检测图案死亡并重置
+                if (isRandomLooping && stepCounter % CHECK_INTERVAL === 0) {
+                    if (isPatternDead()) {
+                        console.log('图案检测到死亡，自动重新开始（条纹初始）');
+                        applyPresetDirect('stripes', false);
+                    }
+                }
+            }
+
+            // HSV转RGB函数
+            function hsvToRgb(h, s, v) {
+                let r, g, b;
+                const i = Math.floor(h * 6);
+                const f = h * 6 - i;
+                const p = v * (1 - s);
+                const q = v * (1 - f * s);
+                const t = v * (1 - (1 - f) * s);
+
+                switch (i % 6) {
+                    case 0: r = v; g = t; b = p; break;
+                    case 1: r = q; g = v; b = p; break;
+                    case 2: r = p; g = v; b = t; break;
+                    case 3: r = p; g = q; b = v; break;
+                    case 4: r = t; g = p; b = v; break;
+                    case 5: r = v; g = p; b = q; break;
+                }
+
+                return {
+                    r: Math.floor(r * 255),
+                    g: Math.floor(g * 255),
+                    b: Math.floor(b * 255)
+                };
+            }
+
+            function render() {
+                // 更新RGB循环颜色
+                if (isRgbCycling) {
+                    rgbCycleHue += RGB_CYCLE_SPEED / 360;
+                    if (rgbCycleHue >= 1) rgbCycleHue = 0;
+                    currentColor = hsvToRgb(rgbCycleHue, 1, 1);
+                }
+
+                const imageData = offCtx.createImageData(GRID_W, GRID_H);
+                const data = imageData.data;
+                for (let i = 0; i < TOTAL_CELLS; i++) {
+                    const t = Math.min(1, v[i] / 0.35);
+                    const r = Math.floor(t * currentColor.r);
+                    const g = Math.floor(t * currentColor.g);
+                    const b = Math.floor(t * currentColor.b);
+                    const p = i * 4;
+                    data[p] = r;
+                    data[p + 1] = g;
+                    data[p + 2] = b;
+                    data[p + 3] = 255;
+                }
+                offCtx.putImageData(imageData, 0, 0);
+                ctx.imageSmoothingEnabled = false;
+                ctx.drawImage(offCanvas, 0, 0, DISPLAY_W, DISPLAY_H);
+            }
+
+            function animate() {
+                for (let s = 0; s < 5; s++) step();
+                render();
+                requestAnimationFrame(animate);
+            }
+
+            // 预设参数（已更新）
+            const presets = {
+                stripes: { Du: 0.16, Dv: 0.08, F: 0.035, k: 0.060 },
+                spots: { Du: 0.160, Dv: 0.080, F: 0.0300, k: 0.0620 },
+                maze: { Du: 0.16, Dv: 0.08, F: 0.025, k: 0.055 },
+                honeycomb: { Du: 0.295, Dv: null, F: 0.0350, k: 0.0630 }, // Dv随机
+                concentric: { Du: 0.160, Dv: 0.020, F: 0.0800, k: 0.0530 }, // 最终稳定参数
+                coral: { Du: 0.100, Dv: 0.050, F: 0.0140, k: 0.0450 }
+            };
+
+            const paramLimits = {
+                Du: { min: 0.04, max: 0.30 },
+                Dv: { min: 0.02, max: 0.20 },
+                F: { min: 0.010, max: 0.080 },
+                k: { min: 0.035, max: 0.075 }
+            };
+
+            let currentPreset = 'stripes';
+
+            // ---------- 通用清理函数 ----------
+            function clearAllSpecialTimers() {
+                if (spotTimer) { clearTimeout(spotTimer); spotTimer = null; }
+                if (spotStepInterval) { clearInterval(spotStepInterval); spotStepInterval = null; }
+                if (concentricTimer) { clearTimeout(concentricTimer); concentricTimer = null; }
+                if (huanInterval) { clearInterval(huanInterval); huanInterval = null; }
+                huanAdjustCount = 0;
+            }
+
+            function stopRandomLoop() {
+                if (randomLoopTimeout) { clearTimeout(randomLoopTimeout); randomLoopTimeout = null; }
+                isRandomLooping = false;
+                document.getElementById('randomLoopBtn').classList.remove('active');
+                if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+                activeAnimations.clear();
+            }
+
+            // 应用预设（不带特殊动画）
+            function applyPresetDirect(presetName, preservePattern = false) {
+                const p = presets[presetName];
+                if (!p) return;
+                // 停止所有特殊定时器
+                clearAllSpecialTimers();
+                stopRandomLoop();
+                if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+                activeAnimations.clear();
+
+                // 特殊处理 honeycomb: Dv随机
+                if (presetName === 'honeycomb') {
+                    Du = p.Du;
+                    const randomDv = parseFloat((Math.random() * (0.076 - 0.050) + 0.050).toFixed(5));
+                    Dv = randomDv;
+                    F = p.F;
+                    k = p.k;
+                } else {
+                    Du = p.Du;
+                    Dv = p.Dv;
+                    F = p.F;
+                    k = p.k;
+                }
+                updateDisplays();
+                if (!preservePattern) initPattern();
+                currentPreset = presetName;
+                document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+                const activeBtn = document.querySelector(`[data-preset="${presetName}"]`);
+                if (activeBtn) activeBtn.classList.add('active');
+            }
+
+            // 同心环两段逻辑
+            function startConcentricTransition() {
+                clearAllSpecialTimers();
+                stopRandomLoop();
+                if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+                activeAnimations.clear();
+                
+                // 先设置第一阶段参数：Du=0.160, Dv=0.080, F=0.0800, k=0.0530
+                Du = 0.160;
+                Dv = 0.080;
+                F = 0.0800;
+                k = 0.0530;
+                updateDisplays();
+                initPattern(); // 重新初始化图案，确保视觉效果
+                document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+                const concentricBtn = document.querySelector(`[data-preset="concentric"]`);
+                if (concentricBtn) concentricBtn.classList.add('active');
+                currentPreset = 'concentric';
+                
+                // 随机时长 3~6 秒 (毫秒)
+                const duration = Math.random() * 3000 + 3000;
+                concentricTimer = setTimeout(() => {
+                    // 第二阶段：切换到最终同心环参数 Dv=0.020
+                    Du = 0.160;
+                    Dv = 0.020;
+                    F = 0.0800;
+                    k = 0.0530;
+                    updateDisplays();
+                    // 不重新初始化图案，让演化自然继续
+                    concentricTimer = null;
+                }, duration);
+            }
+
+            // 回环模式：每2秒微调k，共3次
+            function startHuanLoop() {
+                clearAllSpecialTimers();
+                stopRandomLoop();
+                if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+                activeAnimations.clear();
+                
+                // 应用珊瑚（回环）参数
+                const p = presets.coral;
+                Du = p.Du;
+                Dv = p.Dv;
+                F = p.F;
+                k = p.k;
+                updateDisplays();
+                initPattern();
+                document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+                const coralBtn = document.querySelector(`[data-preset="coral"]`);
+                if (coralBtn) coralBtn.classList.add('active');
+                currentPreset = 'coral';
+                
+                huanAdjustCount = 0;
+                // 启动定时器，每2秒调整一次，共3次
+                let adjustTimes = 0;
+                huanInterval = setInterval(() => {
+                    if (adjustTimes >= 6) {
+                        clearInterval(huanInterval);
+                        huanInterval = null;
+                        return;
+                    }
+                    // 随机生成 0.041 ~ 0.047 之间的k值
+                    const newK = parseFloat((Math.random() * (0.047 - 0.041) + 0.041).toFixed(5));
+                    k = newK;
+                    updateDisplays();
+                    adjustTimes++;
+                    console.log(`回环第${adjustTimes}次调整k = ${k}`);
+                }, 1000);
+            }
+
+            // 斑点渐变过渡（保持原有逻辑）
+            function startSpotTransition() {
+                clearAllSpecialTimers();
+                stopRandomLoop();
+                document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+                const spotsBtn = document.querySelector(`[data-preset="spots"]`);
+                if (spotsBtn) spotsBtn.classList.add('active');
+                currentPreset = 'spots';
+                const stripesParams = presets.stripes;
+                Du = stripesParams.Du;
+                Dv = stripesParams.Dv;
+                F = stripesParams.F;
+                k = stripesParams.k;
+                updateDisplays();
+                initPattern();
+                const startK = 0.060,
+                    targetK = 0.062; 
+                const stepCount = 4;
+                const stepDelta = (targetK - startK) / stepCount;
+                let currentStep = 0;
+                spotTimer = setTimeout(() => {
+                    spotStepInterval = setInterval(() => {
+                        if (currentStep < stepCount) {
+                            currentStep++;
+                            let newK = startK + currentStep * stepDelta;
+                            if (currentStep === stepCount) newK = targetK;
+                            k = newK;
+                            updateDisplays();
+                            if (currentStep === stepCount) {
+                                clearInterval(spotStepInterval);
+                                spotStepInterval = null;
+                                const spotsParams = presets.spots;
+                                Du = spotsParams.Du;
+                                Dv = spotsParams.Dv;
+                                F = spotsParams.F;
+                                k = spotsParams.k;
+                                updateDisplays();
+                            }
+                        } else {
+                            if (spotStepInterval) clearInterval(spotStepInterval);
+                            spotStepInterval = null;
+                        }
+                    }, 500);
+                }, 3000);
+            }
+
+            function randomizeParams() {
+                const params = ['Du', 'Dv', 'F', 'k'];
+                const availableParams = params.filter(p => !activeAnimations.has(p));
+                if (availableParams.length === 0) return;
+                const numParamsToChange = Math.floor(Math.random() * availableParams.length) + 1;
+                const shuffledParams = [...availableParams].sort(() => Math.random() - 0.5);
+                const paramsToChange = shuffledParams.slice(0, numParamsToChange);
+                paramsToChange.forEach(param => {
+                    const changePercent = 1 + (Math.random() - 0.5) * 0.18;
+                    let currentValue, targetValue;
+                    switch (param) {
+                        case 'Du':
+                            currentValue = Du;
+                            targetValue = currentValue * changePercent;
+                            targetValue = Math.max(paramLimits.Du.min, Math.min(paramLimits.Du.max, targetValue));
+                            break;
+                        case 'Dv':
+                            currentValue = Dv;
+                            targetValue = currentValue * changePercent;
+                            targetValue = Math.max(paramLimits.Dv.min, Math.min(paramLimits.Dv.max, targetValue));
+                            break;
+                        case 'F':
+                            currentValue = F;
+                            targetValue = currentValue * changePercent;
+                            targetValue = Math.max(paramLimits.F.min, Math.min(paramLimits.F.max, targetValue));
+                            break;
+                        case 'k':
+                            currentValue = k;
+                            targetValue = currentValue * changePercent;
+                            targetValue = Math.max(paramLimits.k.min, Math.min(paramLimits.k.max, targetValue));
+                            break;
+                    }
+                    animateParameter(param, targetValue);
+                });
+            }
+
+            function getRandomInterval() {
+                return MIN_INTERVAL + Math.random() * (MAX_INTERVAL - MIN_INTERVAL);
+            }
+
+            function randomLoopStep() {
+                if (!isRandomLooping) return;
+                randomizeParams();
+                const nextInterval = getRandomInterval() + PARAM_CHANGE_DURATION;
+                randomLoopTimeout = setTimeout(randomLoopStep, nextInterval);
+            }
+
+            function startRandomLoop() {
+                clearAllSpecialTimers();
+                stopRandomLoop();
+                const spotsParams = presets.spots;
+                Du = spotsParams.Du;
+                Dv = spotsParams.Dv;
+                F = spotsParams.F;
+                k = spotsParams.k;
+                updateDisplays();
+                initPattern();
+                document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+                document.getElementById('randomLoopBtn').classList.add('active');
+                currentPreset = null;
+                isRandomLooping = true;
+                const firstInterval = getRandomInterval();
+                randomLoopTimeout = setTimeout(randomLoopStep, firstInterval);
+            }
+
+            function updateDisplays() {
+                document.getElementById('valDu').textContent = Du.toFixed(3);
+                document.getElementById('valDv').textContent = Dv.toFixed(3);
+                document.getElementById('valF').textContent = F.toFixed(4);
+                document.getElementById('valK').textContent = k.toFixed(4);
+                document.getElementById('Du').value = Du;
+                document.getElementById('Dv').value = Dv;
+                document.getElementById('F').value = F;
+                document.getElementById('K').value = k;
+            }
+
+            function bindSliders() {
+                const duSlider = document.getElementById('Du');
+                const dvSlider = document.getElementById('Dv');
+                const fSlider = document.getElementById('F');
+                const kSlider = document.getElementById('K');
+                const handleSlider = (type, value) => {
+                    clearAllSpecialTimers();
+                    stopRandomLoop();
+                    switch (type) {
+                        case 'Du':
+                            Du = value;
+                            break;
+                        case 'Dv':
+                            Dv = value;
+                            break;
+                        case 'F':
+                            F = value;
+                            break;
+                        case 'k':
+                            k = value;
+                            break;
+                    }
+                    updateDisplays();
+                    document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+                    currentPreset = null;
+                };
+                duSlider.addEventListener('input', (e) => handleSlider('Du', parseFloat(e.target.value)));
+                dvSlider.addEventListener('input', (e) => handleSlider('Dv', parseFloat(e.target.value)));
+                fSlider.addEventListener('input', (e) => handleSlider('F', parseFloat(e.target.value)));
+                kSlider.addEventListener('input', (e) => handleSlider('k', parseFloat(e.target.value)));
+            }
+
+            function initPresetButtons() {
+                const grid = document.getElementById('presetGrid');
+                grid.addEventListener('click', (e) => {
+                    const btn = e.target.closest('.preset-btn');
+                    if (!btn) return;
+                    const preset = btn.dataset.preset;
+                    
+                    // 特殊处理各个预设
+                    if (preset === 'spots') {
+                        startSpotTransition();
+                    } else if (preset === 'honeycomb') {
+                        // 化工：随机 Dv
+                        applyPresetDirect('honeycomb', false);
+                    } else if (preset === 'concentric') {
+                        startConcentricTransition();
+                    } else if (preset === 'coral') {
+                        startHuanLoop();
+                    } else {
+                        // stripes, maze 等普通预设
+                        applyPresetDirect(preset, false);
+                    }
+                });
+            }
+
+            function initColorButtons() {
+                document.querySelectorAll('.color-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        setColor(btn.dataset.color);
+                    });
+                });
+                document.getElementById('customColorInput').addEventListener('input', (e) => {
+                    setColor(e.target.value);
+                });
+                document.getElementById('rgbCycleBtn').addEventListener('click', toggleRgbCycle);
+                document.getElementById('speedSlowBtn').addEventListener('click', () => setSpeed('slow'));
+                document.getElementById('speedMediumBtn').addEventListener('click', () => setSpeed('medium'));
+                document.getElementById('speedFastBtn').addEventListener('click', () => setSpeed('fast'));
+            }
+
+            function initActionButtons() {
+                document.getElementById('randomLoopBtn').addEventListener('click', startRandomLoop);
+                document.getElementById('stopLoopBtn').addEventListener('click', () => {
+                    clearAllSpecialTimers();
+                    stopRandomLoop();
+                });
+            }
+
+            // 颜色辅助函数
+            function hexToRgb(hex) {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? {
+                    r: parseInt(result[1], 16),
+                    g: parseInt(result[2], 16),
+                    b: parseInt(result[3], 16)
+                } : null;
+            }
+
+            function setColor(hex) {
+                isRgbCycling = false;
+                document.getElementById('rgbCycleBtn').classList.remove('active');
+                currentColor = hexToRgb(hex);
+                document.getElementById('customColorBtn').style.background = hex;
+                document.getElementById('customColorInput').value = hex;
+                document.querySelectorAll('.color-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.dataset.color === hex) {
+                        btn.classList.add('active');
+                    }
+                });
+            }
+
+            function toggleRgbCycle() {
+                isRgbCycling = !isRgbCycling;
+                if (isRgbCycling) {
+                    document.getElementById('rgbCycleBtn').classList.add('active');
+                    document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('active'));
+                } else {
+                    document.getElementById('rgbCycleBtn').classList.remove('active');
+                }
+            }
+
+            function setSpeed(speed) {
+                document.querySelectorAll('.speed-btn').forEach(btn => btn.classList.remove('active'));
+                switch(speed) {
+                    case 'slow':
+                        RGB_CYCLE_SPEED = 0.05;
+                        document.getElementById('speedSlowBtn').classList.add('active');
+                        break;
+                    case 'medium':
+                        RGB_CYCLE_SPEED = 0.15;
+                        document.getElementById('speedMediumBtn').classList.add('active');
+                        break;
+                    case 'fast':
+                        RGB_CYCLE_SPEED = 0.3;
+                        document.getElementById('speedFastBtn').classList.add('active');
+                        break;
+                }
+            }
+
+            function init() {
+                createArrays();
+                applyPresetDirect('stripes', false);
+                bindSliders();
+                initPresetButtons();
+                initColorButtons();
+                initActionButtons();
+                animate();
+                
+                // 默认启动随机循环和RGB变色
+                startRandomLoop();
+                toggleRgbCycle();
+            }
+            init();
+        })();
+    </script>
+</body>
+</html>
